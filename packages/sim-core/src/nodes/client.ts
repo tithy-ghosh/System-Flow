@@ -1,5 +1,6 @@
 import type { EventInput, SimEvent } from "../engine/event";
 import type { NodeContext, NodeHandler } from "../engine/simulation";
+import { SimRNG } from "../utils/sim-rng";
 
 export interface ClientConfig {
   /** Target Requests Per Second. */
@@ -7,7 +8,7 @@ export interface ClientConfig {
   /** The ID of the node to send requests to (e.g., a Load Balancer or Server). */
   targetNodeId: string;
   /** Random number generator for inter-arrival times. */
-  random: () => number;
+  rng: SimRNG;
 }
 
 /**
@@ -38,7 +39,7 @@ export function createClientNode(config: ClientConfig): NodeHandler {
     });
 
     // 2. Calculate the time until the NEXT request (Exponential distribution).
-    const nextInterArrival = -meanInterArrivalMs * Math.log(1 - config.random());
+    const nextInterArrival = config.rng.exponential(meanInterArrivalMs);
 
     // 3. Schedule the next GENERATE event for ourselves.
     ctx.schedule({

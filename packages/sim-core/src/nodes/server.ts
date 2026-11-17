@@ -1,15 +1,13 @@
-import type { EventInput, SimEvent } from "../engine/event";
+import type { SimEvent } from "../engine/event";
 import type { NodeContext, NodeHandler } from "../engine/simulation";
+import { SimRNG } from "../utils/sim-rng";
 
 export interface ServerConfig {
- /** Number of concurrent workers */
   workers: number;
- /** Mean service time in ms */
-  meanServiceTime: number; 
-  /** Max requests waiting in queue. 0 means no queue(drop if busy) */
+  medianServiceTime: number;
+  serviceTimeShape: number;
   queueLimit: number;
-  /** Random number generator for service limit */
-  random: () => number;
+  rng: SimRNG;
 }
 
 interface ServerState {
@@ -18,15 +16,6 @@ interface ServerState {
   droppedCount: number;
 }
 
-function sampleExponential(mean: number, random: () => number): number {
-  // Inverse transform sampling for exponential distribution
-  return -mean * Math.log(1 - random());
-}
-
-/**
- * Creates a handler for a generic server node (App Server, DB, etc.).
- * Models an M/M/c queue with a finite buffer.
- */
 export function createServerNode(config: ServerConfig): NodeHandler {
   const state: ServerState = {
     activeWorkers: 0,
@@ -36,62 +25,50 @@ export function createServerNode(config: ServerConfig): NodeHandler {
 
   return (event: SimEvent, ctx: NodeContext) => {
     if (event.type === "ARRIVAL") {
-      handleArrival(event, ctx, state, config);
-    } else if (event.type === "DEPARTURE") {
-      handleDeparture(ctx, state, config);
+      // 1. If a worker is free, start processing immediately
+      if (state.activeWorkers < config.workers) {
+        state.activeWorkers++;
+        const serviceTime = config.rng.lognormal(config.medianServiceTime, config.serviceTimeShape);
+        
+        ctx.schedule({
+          time: ctx.now + serviceTime,
+          type: "DEPARTURE",
+          nodeId: event.nodeId,
+          requestId: event.requestId,
+          attempt: event.attempt,
+        });
+      } 
+      // 2. If busy but queue has space, wait in line
+      else if (state.queue.length < config.queueLimit) {
+        state.queue.push(event);
+      } 
+      // 3. If queue is full, DROP the request
+      else {
+        state.droppedCount++;
+      }
+    } 
+    // 4. Handle the completion of a request
+    else if (event.type === "DEPARTURE") {
+      state.activeWorkers--;
+
+      // If someone is waiting in the queue, start them immediately
+      if (state.queue.length > 0) {
+        const nextEvent = state.queue.shift()!;
+        state.activeWorkers++;
+        const serviceTime = config.rng.lognormal(config.medianServiceTime, config.serviceTimeShape);
+        
+        ctx.schedule({
+          time: ctx.now + serviceTime,
+          type: "DEPARTURE",
+          nodeId: nextEvent.nodeId,
+          requestId: nextEvent.requestId,
+          attempt: nextEvent.attempt,
+        });
+      }
     }
   };
 }
 
-function handleArrival(
-  event: SimEvent,
-  ctx: NodeContext,
-  state: ServerState,
-  config: ServerConfig
-): void {
-  if (state.activeWorkers < config.workers) {
-    // Start processing
-    state.activeWorkers++;
-    const serviceTime = sampleExponential(config.meanServiceTime, config.random);
-    ctx.schedule({
-      time: ctx.now + serviceTime,
-      type: "DEPARTURE",
-      nodeId: event.nodeId,
-      requestId: event.requestId,
-      attempt: event.attempt,
-    });
-  } else if (state.queue.length < config.queueLimit) {
-    // Wait in line
-    state.queue.push(event);
-  } else {
-    // Drop
-    state.droppedCount++;
-  }
-}
-
-function handleDeparture(
-  ctx: NodeContext,
-  state: ServerState,
-  config: ServerConfig
-): void {
-  state.activeWorkers--;
-
-  // If there's someone waiting, start them immediately
-  if (state.queue.length > 0) {
-    const nextEvent = state.queue.shift()!;
-    state.activeWorkers++;
-    const serviceTime = sampleExponential(config.meanServiceTime, config.random);
-    ctx.schedule({
-      time: ctx.now + serviceTime,
-      type: "DEPARTURE",
-      nodeId: nextEvent.nodeId,
-      requestId: nextEvent.requestId,
-      attempt: nextEvent.attempt,
-    });
-  }
-}
-
-// Expose state for metrics (read-only)
 export function getServerMetrics(state: ServerState) {
   return {
     activeWorkers: state.activeWorkers,
