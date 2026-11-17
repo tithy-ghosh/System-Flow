@@ -9,3 +9,5 @@ export * from "./engine/event-queue"
 export * from "./engine/simulation";
 export * from "./nodes/server";
 export * from "./utils/rng";
+export * from "./nodes/client";
+export * from "./nodes/load-balancer";
