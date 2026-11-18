@@ -2,18 +2,39 @@ import type { SimEvent } from "../engine/event";
 import type { NodeContext, NodeHandler } from "../engine/simulation";
 import { SimRNG } from "../utils/sim-rng";
 
+export type ServiceDistribution = "exponential" | "lognormal";
+
 export interface ServerConfig {
   workers: number;
-  medianServiceTime: number;
-  serviceTimeShape: number;
   queueLimit: number;
   rng: SimRNG;
+  
+  // Distribution config
+  distribution: ServiceDistribution;
+  meanServiceTime: number;   // Used if exponential
+  medianServiceTime?: number; // Used if lognormal
+  serviceTimeShape?: number;  // Used if lognormal
+
+  // Metric callback
+  onMetric?: (latencyMs: number) => void;
 }
 
 interface ServerState {
   activeWorkers: number;
   queue: SimEvent[];
   droppedCount: number;
+  inFlight: Map<string, number>; // requestId -> arrivalTime
+}
+
+function sampleServiceTime(config: ServerConfig): number {
+  if (config.distribution === "exponential") {
+    return config.rng.exponential(config.meanServiceTime);
+  } else {
+    return config.rng.lognormal(
+      config.medianServiceTime ?? config.meanServiceTime,
+      config.serviceTimeShape ?? 0.5
+    );
+  }
 }
 
 export function createServerNode(config: ServerConfig): NodeHandler {
@@ -21,49 +42,52 @@ export function createServerNode(config: ServerConfig): NodeHandler {
     activeWorkers: 0,
     queue: [],
     droppedCount: 0,
+    inFlight: new Map(),
+  };
+
+  const startProcessing = (event: SimEvent, ctx: NodeContext) => {
+    state.activeWorkers++;
+    const serviceTime = sampleServiceTime(config);
+    ctx.schedule({
+      time: ctx.now + serviceTime,
+      type: "DEPARTURE",
+      nodeId: event.nodeId,
+      requestId: event.requestId,
+      attempt: event.attempt,
+    });
   };
 
   return (event: SimEvent, ctx: NodeContext) => {
     if (event.type === "ARRIVAL") {
-      // 1. If a worker is free, start processing immediately
+      // Record arrival time
+      state.inFlight.set(event.requestId, ctx.now);
+
       if (state.activeWorkers < config.workers) {
-        state.activeWorkers++;
-        const serviceTime = config.rng.lognormal(config.medianServiceTime, config.serviceTimeShape);
-        
-        ctx.schedule({
-          time: ctx.now + serviceTime,
-          type: "DEPARTURE",
-          nodeId: event.nodeId,
-          requestId: event.requestId,
-          attempt: event.attempt,
-        });
-      } 
-      // 2. If busy but queue has space, wait in line
-      else if (state.queue.length < config.queueLimit) {
+        startProcessing(event, ctx);
+      } else if (state.queue.length < config.queueLimit) {
         state.queue.push(event);
-      } 
-      // 3. If queue is full, DROP the request
-      else {
+      } else {
+        // DROP: Clean up inFlight map so it doesn't leak memory
+        state.inFlight.delete(event.requestId);
         state.droppedCount++;
+        if (config.onMetric) config.onMetric(-1); // -1 signals a drop
       }
     } 
-    // 4. Handle the completion of a request
     else if (event.type === "DEPARTURE") {
       state.activeWorkers--;
 
-      // If someone is waiting in the queue, start them immediately
+      // Calculate and record latency
+      const arrivalTime = state.inFlight.get(event.requestId);
+      if (arrivalTime !== undefined) {
+        const latency = ctx.now - arrivalTime;
+        state.inFlight.delete(event.requestId);
+        if (config.onMetric) config.onMetric(latency);
+      }
+
+      // Start next in queue
       if (state.queue.length > 0) {
         const nextEvent = state.queue.shift()!;
-        state.activeWorkers++;
-        const serviceTime = config.rng.lognormal(config.medianServiceTime, config.serviceTimeShape);
-        
-        ctx.schedule({
-          time: ctx.now + serviceTime,
-          type: "DEPARTURE",
-          nodeId: nextEvent.nodeId,
-          requestId: nextEvent.requestId,
-          attempt: nextEvent.attempt,
-        });
+        startProcessing(nextEvent, ctx);
       }
     }
   };
