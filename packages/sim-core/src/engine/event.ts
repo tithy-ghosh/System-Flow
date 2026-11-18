@@ -1,6 +1,7 @@
 export type EventType =
-  "ARRIVAL" | "DEPARTURE" | "RETRY" | "FAILURE" | "METRICS_TICK";
+  "ARRIVAL" | "DEPARTURE" | "GENERATE" | "RETRY" | "FAILURE" | "METRICS_TICK";
 
+export type RequestKind = "read" | "write"
 export interface SimEvent {
   /**
    * Absolute simulated time in milliseconds.
@@ -27,7 +28,11 @@ export interface SimEvent {
    * Retry attempt count
    */
   attempt: number;
-
+  /**
+   * Request kind. Writes cost more than reads at the database.
+   * Defaults to "read" when absent.
+   */
+  kind?: RequestKind;
   /**
    * Optional extra data.
    * Later this can hold read/write type, error reason, cache hit status, etc.

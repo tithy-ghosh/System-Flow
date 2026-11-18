@@ -53,21 +53,28 @@ export type StopReason = "drained" | "horizon";
  * scheduled event passes through the engine's validation.
  */
 export interface NodeContext {
-  
+  /** Current simulated time in ms. */
   readonly now: number;
-
+  /** Schedule a future event. Must be >= now. */
   schedule(event: EventInput): SimEvent;
 }
 
 export type NodeHandler = (event: SimEvent, ctx: NodeContext) => void;
 
+/**
+ * Fired on every dispatched event, before the handler runs.
+ */
+export type EventObserver = (event: SimEvent, time: number) => void;
+
 export interface SimulationOptions {
-  
+  /** Simulation horizon in ms. Events past this are never dispatched. */
   endTime: number;
-  
+  /** Safety budget. Default 5,000,000. */
   maxEvents?: number;
- 
+  /** Record every dispatched event. Debug only — O(n) memory. */
   captureTrace?: boolean;
+  /** Observe every dispatched event. Used for metrics and charts. */
+  onEvent?: EventObserver;
 }
 
 export interface SimulationResult {
@@ -75,7 +82,7 @@ export interface SimulationResult {
   eventsProcessed: number;
   finalTime: number;
   endTime: number;
- 
+  /** Events left in the queue when the run stopped. */
   remainingEvents: number;
   trace?: SimEvent[];
 }
@@ -94,6 +101,7 @@ export class Simulation {
   private readonly maxEvents: number;
   private readonly captureTrace: boolean;
   private trace: SimEvent[] | undefined;
+  private readonly onEvent?: EventObserver;
 
   /**
    * Reused across the whole run (no per-event allocation).
@@ -120,9 +128,10 @@ export class Simulation {
     this.maxEvents = cap;
     this.captureTrace = options.captureTrace ?? false;
     if (this.captureTrace) this.trace = [];
+    this.onEvent = options.onEvent;
   }
 
-  
+
 
   get now(): number {
     return this.clock;
@@ -136,7 +145,6 @@ export class Simulation {
     return this.queue.size;
   }
 
-  
 
   register(nodeId: string, handler: NodeHandler): void {
     if (this.running) {
@@ -156,7 +164,7 @@ export class Simulation {
     return this.handlers.has(nodeId);
   }
 
-
+ 
 
   /**
    * The single entry point for ALL events — initial seeding and node-generated.
@@ -184,6 +192,7 @@ export class Simulation {
     this.ctx.now = 0;
     if (this.captureTrace) this.trace = [];
   }
+
 
 
   run(): SimulationResult {
@@ -226,6 +235,10 @@ export class Simulation {
         }
 
         if (this.trace) this.trace.push(event);
+
+        // Observer fires BEFORE the handler, with the event's timestamp.
+        // Observers must be pure readers — they must not schedule events.
+        if (this.onEvent) this.onEvent(event, this.clock);
 
         handler(event, this.ctx);
       }

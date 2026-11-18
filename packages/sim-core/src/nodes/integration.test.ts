@@ -27,8 +27,10 @@ describe("End-to-End Pipeline", () => {
       medianServiceTime: 5, 
       serviceTimeShape: 0.5, 
       queueLimit: 10, 
-      rng 
-    };
+      rng,
+      distribution: "lognormal",
+      meanServiceTime: 5,
+    } as const;
     sim.register("server-1", createServerNode(serverConfig));
     sim.register("server-2", createServerNode(serverConfig));
 

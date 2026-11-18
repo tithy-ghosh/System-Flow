@@ -11,18 +11,38 @@ describe("Determinism & Reproducibility", () => {
       const sim = new Simulation({ endTime: 1000, captureTrace: true });
       const rng = new SimRNG(seed);
 
-      sim.register("client", createClientNode({ rps: 50, targetNodeId: "lb", rng }));
-      sim.register("lb", createLoadBalancerNode({ 
-        downstreamNodeIds: ["s1", "s2"], algorithm: "random", rng 
-      }));
-      
-      const serverConfig = { 
-        workers: 2, medianServiceTime: 10, serviceTimeShape: 0.8, queueLimit: 50, rng 
-      };
+      sim.register(
+        "client",
+        createClientNode({ rps: 50, targetNodeId: "lb", rng }),
+      );
+      sim.register(
+        "lb",
+        createLoadBalancerNode({
+          downstreamNodeIds: ["s1", "s2"],
+          algorithm: "random",
+          rng,
+        }),
+      );
+
+      const serverConfig = {
+        workers: 2,
+        medianServiceTime: 10,
+        serviceTimeShape: 0.8,
+        queueLimit: 50,
+        rng,
+        distribution: "lognormal",
+        meanServiceTime: 10,
+      } as const;
       sim.register("s1", createServerNode(serverConfig));
       sim.register("s2", createServerNode(serverConfig));
 
-      sim.schedule({ time: 0, type: "GENERATE", nodeId: "client", requestId: "seed", attempt: 0 });
+      sim.schedule({
+        time: 0,
+        type: "GENERATE",
+        nodeId: "client",
+        requestId: "seed",
+        attempt: 0,
+      });
       return sim.run();
     };
 

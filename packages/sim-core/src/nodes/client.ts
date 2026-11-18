@@ -1,52 +1,40 @@
-import type { EventInput, SimEvent } from "../engine/event";
+import type { SimEvent } from "../engine/event";
 import type { NodeContext, NodeHandler } from "../engine/simulation";
 import { SimRNG } from "../utils/sim-rng";
 
 export interface ClientConfig {
-  /** Target Requests Per Second. */
   rps: number;
-  /** The ID of the node to send requests to (e.g., a Load Balancer or Server). */
   targetNodeId: string;
-  /** Random number generator for inter-arrival times. */
   rng: SimRNG;
+  /** Fraction of requests that are reads. Default 0.8. */
+  readRatio?: number;
 }
 
-/**
- * Generates a Poisson stream of ARRIVAL events.
- * 
- * Instead of scheduling all events at t=0 (which would consume massive memory),
- * it uses a "self-scheduling" pattern: every time it generates a request,
- * it schedules the next one.
- */
 export function createClientNode(config: ClientConfig): NodeHandler {
-  // Calculate the mean inter-arrival time in milliseconds.
-  // 100 RPS = 1000ms / 100 = 10ms average between requests.
   const meanInterArrivalMs = 1000 / config.rps;
+  const readRatio = config.readRatio ?? 0.8;
+  let counter = 0;
 
   return (event: SimEvent, ctx: NodeContext) => {
-    // We only care about GENERATE events. 
-    // (The initial GENERATE event is seeded by the test/setup).
     if (event.type !== "GENERATE") return;
 
-    // 1. Schedule the actual ARRIVAL event at the target node.
-    // We schedule it for the CURRENT time (ctx.now) so it enters the target's queue immediately.
+    const requestId = `${event.nodeId}#${counter++}`;
+    const kind = config.rng.uniform() < readRatio ? "read" : "write";
+
     ctx.schedule({
       time: ctx.now,
       type: "ARRIVAL",
       nodeId: config.targetNodeId,
-      requestId: event.requestId,
+      requestId,
       attempt: 0,
+      kind,
     });
 
-    // 2. Calculate the time until the NEXT request (Exponential distribution).
-    const nextInterArrival = config.rng.exponential(meanInterArrivalMs);
-
-    // 3. Schedule the next GENERATE event for ourselves.
     ctx.schedule({
-      time: ctx.now + nextInterArrival,
+      time: ctx.now + config.rng.exponential(meanInterArrivalMs),
       type: "GENERATE",
-      nodeId: event.nodeId, // Send back to this same client node
-      requestId: `gen-${event.requestId.split('-')[1] || '0'}-${ctx.now}`, 
+      nodeId: event.nodeId,
+      requestId: `${requestId}:gen`,
       attempt: 0,
     });
   };
