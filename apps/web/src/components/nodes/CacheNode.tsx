@@ -1,10 +1,12 @@
+import { NodeProps } from "@xyflow/react";
 import { BaseNode } from "./BaseNode";
+import { CacheFlowNode } from "@/types/canvas";
 
-export function CacheNode() {
+export function CacheNode({ data }: NodeProps<CacheFlowNode>) {
   return (
-    <BaseNode title="Cache" icon="⚡" tone="cache">
-      <div>Hit Ratio: 80%</div>
-      <div>Latency: 1ms</div>
+    <BaseNode title={data.label} icon="⚡" tone="cache">
+      <div>Hit ratio: {Math.round(data.hitRatio * 100)}%</div>
+      <div>Latency: {data.hitLatencyMs}ms</div>
     </BaseNode>
   );
 }

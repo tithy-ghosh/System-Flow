@@ -5,7 +5,7 @@ import { ClientFlowNode } from "@/types/canvas";
 
 export function ClientNode({ data }: NodeProps<ClientFlowNode>) {
   return (
-    <BaseNode title="Client" icon="🌐" tone="client">
+    <BaseNode title={data.label} icon="🌐" tone="client">
       <div> RPS: {data.rps}</div>
       <div>Read mix: {Math.round(data.readRatio * 100)}%</div>
     </BaseNode>

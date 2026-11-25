@@ -63,12 +63,16 @@ export type NodeKind = SimNodeData["kind"];
 
 
 
-export const flowNodeSchema = z.object({
+export const flowNodeSchema = z
+.object({
   id: z.string().min(1),
   type: z.enum(["client", "loadBalancer", "server", "cache", "database"]),
   position: z.object({ x: z.number(), y: z.number() }),
   data: simNodeDataSchema,
-});
+})
+.refine((n) => n.type === n.data.kind, {
+    message: "node.type musy match node.data.kind"
+})
 
 export const flowEdgeSchema = z.object({
   id: z.string().min(1),

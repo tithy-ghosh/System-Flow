@@ -62,3 +62,11 @@ export function nextNodeId(kind: NodeKind): string {
   idCounter += 1;
   return `${kind}-${idCounter}`;
 }
+
+/** After hydration, fast-forward the counter past every existing suffix. */
+export function syncIdCounter(nodes: { id: string }[]): void {
+  for (const n of nodes) {
+    const m = /-(\d+)$/.exec(n.id);
+    if (m) idCounter = Math.max(idCounter, Number(m[1]));
+  }
+}
