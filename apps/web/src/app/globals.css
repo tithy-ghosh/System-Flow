@@ -1,26 +1,152 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Design tokens
+ * -------------
+ * Colors are defined once here and consumed through semantic utilities or
+ * CSS variables. Keep raw values centralized so node components never
+ * hard-code colors.
+ */
+@theme {
+  /* Surfaces */
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f5f9;
+
+  /* Foreground */
+  --color-foreground: #0f172a;
+  --color-foreground-muted: #475569;
+  --color-foreground-subtle: #64748b;
+  --color-foreground-inverse: #ffffff;
+
+  /* Borders */
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Brand accent */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #eef2ff;
+
+  /* Status (use 700–800 shades so they stay legible as text on white) */
+  --color-success: #065f46;
+  --color-success-soft: #ecfdf5;
+  --color-warning: #92400e;
+  --color-warning-soft: #fffbeb;
+  --color-error: #b91c1c;
+  --color-error-soft: #fef2f2;
+  --color-info: #1d4ed8;
+  --color-info-soft: #eff6ff;
+
+  /*
+   * Node tones
+   * Accents share an OKLCH lightness (L 0.54), so every node type has the
+   * same visual weight and at least 4.5:1 contrast with white text. Soft
+   * values use the same hue at L 0.945 for tinted surfaces; rings sit at
+   * L 0.74 for the selected state.
+   */
+  --color-node-client: oklch(0.54 0.19 255);
+  --color-node-client-soft: oklch(0.945 0.035 255);
+  --color-node-client-ring: oklch(0.74 0.12 255);
+
+  --color-node-load-balancer: oklch(0.54 0.13 162);
+  --color-node-load-balancer-soft: oklch(0.945 0.035 162);
+  --color-node-load-balancer-ring: oklch(0.74 0.12 162);
+
+  --color-node-server: oklch(0.54 0.2 295);
+  --color-node-server-soft: oklch(0.945 0.035 295);
+  --color-node-server-ring: oklch(0.74 0.12 295);
+
+  --color-node-cache: oklch(0.54 0.14 65);
+  --color-node-cache-soft: oklch(0.945 0.035 65);
+  --color-node-cache-ring: oklch(0.74 0.12 65);
+
+  --color-node-database: oklch(0.54 0.19 25);
+  --color-node-database-soft: oklch(0.945 0.035 25);
+  --color-node-database-ring: oklch(0.74 0.12 25);
+
+  /* Charts */
+  --color-chart-p50: #059669;
+  --color-chart-p95: #d97706;
+  --color-chart-p99: #dc2626;
+  --color-chart-util: #4f46e5;
+  --color-chart-grid: #e2e8f0;
+
+  /* Canvas */
+  --color-canvas-dot: #cbd5e1;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/*
+ * Node tone mapping
+ * -----------------
+ * BaseNode only exposes a semantic data-tone attribute; the translation from
+ * tone name to design tokens lives here so components stay token-agnostic.
+ * Handles inherit their palette from the same variables.
+ */
+.base-node {
+  --xy-handle-background-color: var(--node-accent);
+  --xy-handle-border-color: var(--color-surface);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.base-node[data-tone="client"] {
+  --node-accent: var(--color-node-client);
+  --node-soft: var(--color-node-client-soft);
+  --node-ring: var(--color-node-client-ring);
 }
 
+.base-node[data-tone="load-balancer"] {
+  --node-accent: var(--color-node-load-balancer);
+  --node-soft: var(--color-node-load-balancer-soft);
+  --node-ring: var(--color-node-load-balancer-ring);
+}
+
+.base-node[data-tone="server"] {
+  --node-accent: var(--color-node-server);
+  --node-soft: var(--color-node-server-soft);
+  --node-ring: var(--color-node-server-ring);
+}
+
+.base-node[data-tone="cache"] {
+  --node-accent: var(--color-node-cache);
+  --node-soft: var(--color-node-cache-soft);
+  --node-ring: var(--color-node-cache-ring);
+}
+
+.base-node[data-tone="database"] {
+  --node-accent: var(--color-node-database);
+  --node-soft: var(--color-node-database-soft);
+  --node-ring: var(--color-node-database-ring);
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * React Flow palette integration
+ * React Flow reads its chrome colors from --xy-* variables. These rules are
+ * intentionally unlayered so they win over the library's @layer xyflow
+ * defaults.
+ */
+.react-flow {
+  color-scheme: light;
+  --xy-edge-stroke-default: var(--color-border-strong);
+  --xy-edge-stroke-selected-default: var(--color-accent);
+  --xy-connectionline-stroke-default: var(--color-accent);
+  --xy-background-pattern-dots-color-default: var(--color-canvas-dot);
+  --xy-minimap-background-color-default: var(--color-surface);
+  --xy-minimap-node-background-color-default: var(--color-border-strong);
+  --xy-controls-button-background-color-default: var(--color-surface);
+  --xy-controls-button-background-color-hover-default: var(--color-surface-muted);
+  --xy-controls-button-border-color-default: var(--color-border);
+}
+
+.react-flow__background {
+  background-color: var(--color-canvas);
 }
