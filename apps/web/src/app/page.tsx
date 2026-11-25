@@ -1,25 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  type Node,
-  type Edge,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  type Connection,
-} from "@xyflow/react";
+import { ReactFlow, Background, Controls, MiniMap } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import { useCanvasStore } from "@/store/useCanvasStore";
 import { ClientNode } from "@/components/nodes/ClientNode";
 import { LoadBalancerNode } from "@/components/nodes/LoadBalancerNode";
 import { ServerNode } from "@/components/nodes/ServerNode";
 import { CacheNode } from "@/components/nodes/CacheNode";
 import { DatabaseNode } from "@/components/nodes/DatabaseNode";
+import type { NodeKind, SimFlowEdge, SimFlowNode } from "@/types/canvas";
 
 const nodeTypes = {
   client: ClientNode,
@@ -29,79 +19,58 @@ const nodeTypes = {
   database: DatabaseNode,
 };
 
-type NodeType = keyof typeof nodeTypes;
-
-const nodeButtons: { type: NodeType; label: string; icon: string }[] = [
-  { type: "client", label: "Client", icon: "🌐" },
-  { type: "loadBalancer", label: "Load Balancer", icon: "⚖️" },
-  { type: "server", label: "Server", icon: "🖥️" },
-  { type: "cache", label: "Cache", icon: "⚡" },
-  { type: "database", label: "Database", icon: "🗄️" },
+const toolbar: { kind: NodeKind; label: string; icon: string }[] = [
+  { kind: "client", label: "Client", icon: "🌐" },
+  { kind: "loadBalancer", label: "Load Balancer", icon: "⚖️" },
+  { kind: "server", label: "Server", icon: "🖥️" },
+  { kind: "cache", label: "Cache", icon: "⚡" },
+  { kind: "database", label: "Database", icon: "🗄️" },
 ];
 
-const initialNodes: Node[] = [];
-const initialEdges: Edge[] = [];
-
 export default function Home() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [nodeCounter, setNodeCounter] = useState(0);
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges],
-  );
-
-  const addNode = (type: NodeType) => {
-    const id = `${type}-${nodeCounter}`;
-    const newNode: Node = {
-      id,
-      type,
-      position: {
-        x: 100 + (nodeCounter % 5) * 50,
-        y: 100 + (nodeCounter % 5) * 50,
-      },
-      data: { label: `${type}` },
-    };
-    setNodes((nds) => [...nds, newNode]);
-    setNodeCounter((c) => c + 1);
-  };
+  const nodes = useCanvasStore((s) => s.nodes);
+  const edges = useCanvasStore((s) => s.edges);
+  const onNodesChange = useCanvasStore((s) => s.onNodesChange);
+  const onEdgesChange = useCanvasStore((s) => s.onEdgesChange);
+  const onConnect = useCanvasStore((s) => s.onConnect);
+  const addNode = useCanvasStore((s) => s.addNode);
+  const selectNode = useCanvasStore((s) => s.selectNode);
 
   return (
     <div className="flex h-screen w-screen">
-      {/* Toolbar */}
-      <div className="w-64 bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto">
-        <h2 className="text-lg font-bold mb-4">Components</h2>
+      <aside className="w-64 bg-[var(--color-surface-muted)] border-r border-[var(--color-border)] p-4">
+        <h2 className="text-lg font-bold mb-4 text-[var(--color-foreground)]">Components</h2>
         <div className="space-y-2">
-          {nodeButtons.map((btn) => (
+          {toolbar.map((btn) => (
             <button
-              key={btn.type}
-              onClick={() => addNode(btn.type)}
-              className="w-full text-left px-4 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors flex items-center gap-2"
+              key={btn.kind}
+              onClick={() => addNode(btn.kind)}
+              className="w-full text-left px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md hover:border-[var(--color-accent)] transition-colors flex items-center gap-2 text-[var(--color-foreground)]"
             >
               <span className="text-xl">{btn.icon}</span>
               <span>{btn.label}</span>
             </button>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* Canvas */}
-      <div className="flex-1">
-        <ReactFlow
+      <main className="flex-1">
+        <ReactFlow<SimFlowNode, SimFlowEdge>
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={(_, node) => selectNode(node.id)}
+          onPaneClick={() => selectNode(null)}
           nodeTypes={nodeTypes}
           fitView
         >
-          <Background />
+          <Background color="var(--color-canvas-dot)" />
           <Controls />
           <MiniMap />
         </ReactFlow>
-      </div>
+      </main>
     </div>
   );
 }

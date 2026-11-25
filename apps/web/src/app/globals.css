@@ -86,6 +86,12 @@
 .base-node {
   --xy-handle-background-color: var(--node-accent);
   --xy-handle-border-color: var(--color-surface);
+  transition: box-shadow 120ms ease;
+}
+
+/* Selection ring: React Flow marks the wrapper, the tone supplies the color. */
+.react-flow__node.selected .base-node {
+  box-shadow: 0 0 0 3px var(--node-ring);
 }
 
 .base-node[data-tone="client"] {

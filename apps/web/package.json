@@ -10,10 +10,11 @@
   },
   "dependencies": {
     "@repo/sim-core": "workspace:*",
-    "@xyflow/react": "^13.0.2",
+    "@xyflow/react": "^12.12.1",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
