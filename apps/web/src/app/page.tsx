@@ -11,6 +11,7 @@ import { CacheNode } from "@/components/nodes/CacheNode";
 import { DatabaseNode } from "@/components/nodes/DatabaseNode";
 import type { NodeKind, SimFlowEdge, SimFlowNode } from "@/types/canvas";
 import { PropertiesPanel } from "@/components/panel/PropertiesPanel";
+import { RunPanel } from "@/components/run/RunPanel";
 const nodeTypes = {
   client: ClientNode,
   loadBalancer: LoadBalancerNode,
@@ -105,6 +106,7 @@ export default function Home() {
             ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
             : "Not saved yet"}
         </p>
+        <RunPanel />
       </aside>
 
       <main className="flex-1">

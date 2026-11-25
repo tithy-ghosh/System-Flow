@@ -14,3 +14,4 @@ export * from "./utils/sim-rng";
 export * from "./nodes/cache";
 export * from "./nodes/database";
 export * from "./metrics/request-tracker";
+export * from "./scenarios/demo";
