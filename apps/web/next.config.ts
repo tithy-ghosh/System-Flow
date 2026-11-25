@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
+   transpilePackages: ["@repo/sim-core", "@repo/schemas"],
 };
 
 export default nextConfig;

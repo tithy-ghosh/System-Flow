@@ -1,56 +1,7 @@
 import type { Node } from "@xyflow/react";
+import { CacheData, ClientData, DatabaseData, LoadBalancerData, NodeKind, ServerData, SimNodeData } from "@repo/schemas";
 
-// ------------------------------------------------------------- node data
-
-export type ClientData = {
-  kind: "client";
-  label: string;
-  rps: number;
-  readRatio: number;
-};
-
-export type LoadBalancerData = {
-  kind: "loadBalancer";
-  label: string;
-  algorithm: "round-robin" | "random";
-};
-
-export type ServerData = {
-  kind: "server";
-  label: string;
-  workers: number;
-  meanServiceTime: number;
-  distribution: "exponential" | "lognormal";
-  queueLimit: number;
-};
-
-export type CacheData = {
-  kind: "cache";
-  label: string;
-  hitRatio: number;
-  hitLatencyMs: number;
-  missPenaltyMs: number;
-};
-
-export type DatabaseData = {
-  kind: "database";
-  label: string;
-  poolSize: number;
-  readLatencyMs: number;
-  writeLatencyMs: number;
-  queueLimit: number;
-};
-
-export type SimNodeData =
-  | ClientData
-  | LoadBalancerData
-  | ServerData
-  | CacheData
-  | DatabaseData;
-
-export type NodeKind = SimNodeData["kind"];
-
-// ------------------------------------------------------- typed flow nodes
+export type { CacheData, ClientData, DatabaseData, LoadBalancerData, NodeKind, ServerData, SimNodeData };
 
 export type ClientFlowNode = Node<ClientData, "client">;
 export type LoadBalancerFlowNode = Node<LoadBalancerData, "loadBalancer">;
@@ -71,7 +22,7 @@ export type SimFlowEdge = {
   target: string;
 };
 
-// ------------------------------------------------------------ defaults
+
 
 /**
  * Defaults intentionally mirror sim-core engine configs.

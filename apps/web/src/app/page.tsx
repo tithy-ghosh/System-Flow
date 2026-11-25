@@ -10,7 +10,7 @@ import { ServerNode } from "@/components/nodes/ServerNode";
 import { CacheNode } from "@/components/nodes/CacheNode";
 import { DatabaseNode } from "@/components/nodes/DatabaseNode";
 import type { NodeKind, SimFlowEdge, SimFlowNode } from "@/types/canvas";
-
+import { PropertiesPanel } from "@/components/panel/PropertiesPanel";
 const nodeTypes = {
   client: ClientNode,
   loadBalancer: LoadBalancerNode,
@@ -71,6 +71,7 @@ export default function Home() {
           <MiniMap />
         </ReactFlow>
       </main>
+      <PropertiesPanel />
     </div>
   );
 }
