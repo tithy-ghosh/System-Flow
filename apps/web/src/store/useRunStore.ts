@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { simulationResultSchema, type SimulationResultDTO } from "@repo/schemas";
+import {
+  simulationResultSchema,
+  type SimulationResultDTO,
+} from "@repo/schemas";
 import { getSimWorker, terminateSimWorker } from "@/worker/client";
 
 interface RunState {
@@ -23,7 +26,14 @@ export const useRunStore = create<RunState>((set) => ({
 
       const parsed = simulationResultSchema.safeParse(raw);
       if (!parsed.success) {
-        set({ status: "error", error: "Worker returned an invalid result shape", result: null });
+        const detail = parsed.error.issues
+          .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+          .join("; ");
+        set({
+          status: "error",
+          error: `Worker result -> ${detail}`,
+          result: null,
+        });
         return;
       }
       set({ status: "done", result: parsed.data });

@@ -2,7 +2,8 @@
  * Pre-defined buckets for latency in milliseconds.
  * Covers everything from fast cache hits (1ms) to DB timeouts (5000ms).
  */
-const BUCKETS = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, Infinity];
+
+const BUCKETS = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10_000];
 
 export interface MetricSnapshot {
   count: number;
@@ -32,7 +33,7 @@ export class MetricsAggregator {
 
     // Find the bucket this value belongs to
     for (let i = 0; i < BUCKETS.length; i++) {
-      if (value <= BUCKETS[i]) {
+      if (i ===BUCKETS.length -1 || value <= BUCKETS[i]) {
         this.bucketCounts[i]++;
         break;
       }
